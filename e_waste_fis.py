@@ -88,3 +88,33 @@ Hazard = FuzzyVariable(
         "Hazardous": ("trap", (7, 8.5, 10, 10)),
     }
 )
+
+# 3) Rule base (13 rules)
+@dataclass
+class Rule:
+    antecedents: List[Tuple[FuzzyVariable, str]]  # e.g., [(Hazard,"Hazardous"), (Contamination,"High")]
+    consequent: str                               # label in OUTPUT_CONSTANTS
+    def fire(self, inputs: Dict[str, float]) -> float:
+        vals = [var.mu(lbl, inputs[var.name]) for var, lbl in self.antecedents]
+        return float(min(vals)) if vals else 0.0  # AND=min
+
+RULES: List[Rule] = [
+    # Safety-first
+    Rule([(Hazard, "Hazardous")], "Hazardous Handling"),
+    Rule([(Hazard, "Risky"), (Contamination, "High")], "Hazardous Handling"),
+    Rule([(Contamination, "High"), (Repairability, "Poor")], "Safe Disposal"),
+    # Value-recovery
+    Rule([(MetalContent, "High"), (Contamination, "Low")], "Material Recovery"),
+    Rule([(MetalContent, "High"), (Hazard, "Safe")], "Material Recovery"),
+    Rule([(MetalContent, "Medium"), (Repairability, "Poor"), (Hazard, "Safe")], "Material Recovery"),
+    # Reuse
+    Rule([(Repairability, "Good"), (Contamination, "Low"), (Hazard, "Safe")], "Refurbish/Reuse"),
+    Rule([(Repairability, "Moderate"), (Contamination, "Low"), (Hazard, "Safe")], "Refurbish/Reuse"),
+    # Tie-breakers
+    Rule([(Repairability, "Moderate"), (MetalContent, "Medium"), (Contamination, "Moderate")], "Material Recovery"),
+    Rule([(Repairability, "Poor"), (MetalContent, "Low"), (Contamination, "Moderate")], "Safe Disposal"),
+    Rule([(Hazard, "Risky"), (MetalContent, "High")], "Hazardous Handling"),
+    # Contamination-led
+    Rule([(Contamination, "High"), (MetalContent, "Medium"), (Hazard, "Safe")], "Material Recovery"),
+    Rule([(Contamination, "Moderate"), (Repairability, "Good"), (Hazard, "Risky")], "Hazardous Handling"),
+]
